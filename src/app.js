@@ -1,5 +1,7 @@
 import puppeteer from "puppeteer";
 import fs from "fs";
+import { Parser } from "json2csv";
+import XLSX from "xlsx";
 
 export async function getDataFromTransfermarkt() {
   try {
@@ -169,12 +171,6 @@ export async function getDataFromTransfermarkt() {
         const recordTranferenciaActual = document.querySelector(".data-header__items:nth-child(2)>li:nth-child(3)>span>span>a")?.innerText.split("-")[1]?.trim() || "No Disponible";
         const valorEnElMercado = document.querySelector(".data-header__box--small>a")?.innerText.split("\n")[0]?.trim() || "No Disponible";
 
-        // //Información de liga del equipo
-        // const nombreLiga = document.querySelector(".data-header__club-info>span:first-child>a")?.innerText.trim() || "No Disponible";
-        // const imagenLiga = document.querySelector(".data-header__box__club-link>img")?.currentSrc.trim() || "No Disponible";
-        // const nivelLiga = document.querySelector(".data-header__club-info>span:nth-child(2)>span>a")?.innerText.trim() || "No Disponible";
-        // const posicionTablaLiga = document.querySelector(".data-header__club-info>span:nth-child(3)>span>a")?.innerText.trim() || "No Disponible";
-        // const aniosEnLiga = document.querySelector(".data-header__club-info>span:nth-child(4)>span>a")?.innerText.split(" ")[0].trim() || "No Disponible";
 
         //Información de jugadores del equipo
         const datosJugadores = () => {
@@ -248,6 +244,33 @@ export async function getDataFromTransfermarkt() {
     fs.writeFileSync("resultadosClubs.json", data);
 
     console.log(":::Archivo JSON CREADO!!:::");
+
+    let dataJugadoresArray = []
+
+    const dataJugadores = resultadosClub.map(item => {
+      return item.equipos.map(equipo => {
+        return equipo.informacion.jugadores.map(jugador => dataJugadoresArray.push(jugador))
+      })
+    })
+
+      //Crear archivo CSV
+  const fields = ["numero", "imagenJugador", "nombreJugador", "posicionJugador", "nacionalidadesDelJugador"];
+  const json2csvParse = new Parser({
+    fields,
+    defaultValue: "No hay Información",
+  });
+  const csv = json2csvParse.parse(dataJugadoresArray);
+  fs.writeFileSync("resultadosClub.csv", csv, "utf-8");
+  console.log("Archivo CSV creado!!!");
+
+  //Crear archivo XLSX
+  const worksheet = XLSX.utils.json_to_sheet(dataJugadoresArray);
+
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Datos Jugadores");
+  XLSX.writeFile(workbook, "resultadosClub.xlsx");
+
+  console.log("Archivo XLSX creado!!!");
 
 
     return {"datos": resultadosClub, "success": true};
